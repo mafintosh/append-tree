@@ -144,17 +144,17 @@ Tree.prototype.checkout = function (seq) {
   return new Tree(this.feed, {checkout: true, seq: seq})
 }
 
-Tree.prototype.path = function (path, cb) {
+Tree.prototype.proof = function (path, cb) {
   var self = this
   var result = []
   this._getLast(function (err, last) {
     if (err) return cb(err)
     if (!last) return cb(notFound(path))
-    self._path(path, last, split(path), result, cb)
+    self._proof(path, last, split(path), result, cb)
   })
 }
 
-Tree.prototype._path = function (path, last, parts, result, cb) {
+Tree.prototype._proof = function (path, last, parts, result, cb) {
   result.push(last.seq)
 
   var i = compare(last.path, parts)
@@ -170,7 +170,7 @@ Tree.prototype._path = function (path, last, parts, result, cb) {
 
     if (node) {
       var name = i < node.path.length && node.path[i]
-      if (name === parts[i]) return self._path(path, node, parts, result, cb)
+      if (name === parts[i]) return self._proof(path, node, parts, result, cb)
     }
 
     if (!paths.length) return cb(notFound(path))

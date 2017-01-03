@@ -82,6 +82,11 @@ Checkout the at an older version. The checked out tree will be readonly.
 
 Stream out all the changes on the tree.
 
+#### `t.proof(key, callback)`
+
+Get the log indexes needed to verify the value of `key` as the latest one in the tree.
+Useful if you are replicating the log and want to avoid roundtrips.
+
 ## License
 
 MIT

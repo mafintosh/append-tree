@@ -133,7 +133,7 @@ tape('many dirs', function (t) {
   })
 })
 
-tape('path', function (t) {
+tape('proof', function (t) {
   var tree = create()
 
   tree.append('/hello.txt', 'a')
@@ -141,15 +141,15 @@ tape('path', function (t) {
   tree.append('/hello.txt', 'c')
 
   tree.flush(function () {
-    tree.path('/hello.txt', function (err, path) {
+    tree.proof('/hello.txt', function (err, proof) {
       t.error(err, 'no error')
-      t.same(path, [2])
-      tree.path('/world.txt', function (err, path) {
+      t.same(proof, [2])
+      tree.proof('/world.txt', function (err, proof) {
         t.error(err, 'no error')
-        t.same(path, [2, 1])
-        tree.checkout(1).path('/hello.txt', function (err, path) {
+        t.same(proof, [2, 1])
+        tree.checkout(1).proof('/hello.txt', function (err, proof) {
           t.error(err, 'no error')
-          t.same(path, [1, 0])
+          t.same(proof, [1, 0])
           t.end()
         })
       })
