@@ -87,6 +87,11 @@ Checkout the at an older version. The checked out tree will be readonly.
 
 Stream out all the changes on the tree.
 
+Takes the following optional options:
+
+- `since` - Start streaming from this sequence number (defaults to the beginning of the stream)
+- `until` - Stop streaming when reaching this sequence number (defaults to the currently last block in the stream)
+
 #### `t.proof(key, callback)`
 
 Get the log indexes needed to verify the value of `key` as the latest one in the tree.
