@@ -8,7 +8,7 @@ exports.encodingLength = function (paths) {
     var p = paths[i]
     size += varint.encodingLength(p.length)
     for (var j = 0; j < p.length; j++) {
-      size += varint.encodingLength(p[j])
+      size += varint.encodingLength(p[j] - (j ? p[j - 1] : 0))
     }
   }
   return size
@@ -51,6 +51,7 @@ exports.decode = function (buf, offset, end) {
     var p = new Array(length)
     var acc = 0
     paths.push(p)
+
     for (var i = 0; i < length; i++) {
       p[i] = varint.decode(buf, offset) + acc
       acc = p[i]
