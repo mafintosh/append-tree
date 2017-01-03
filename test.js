@@ -155,7 +155,6 @@ tape('path', function (t) {
       })
     })
   })
-
 })
 
 function create () {

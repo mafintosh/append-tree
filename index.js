@@ -1,4 +1,3 @@
-var varint = require('varint')
 var protobuf = require('protocol-buffers')
 var mutexify = require('mutexify')
 var from = require('from2')
