@@ -54,7 +54,7 @@ List the immediate children of a node specified by `key` (similar to a readdir c
 ``` js
 t.append('/hello/world/foo.txt', 'bar', function () {
   t.list('/', console.log) // null, ['hello']
-  t.list('/hello') // null, ['world']
+  t.list('/hello', console.log) // null, ['world']
   t.list('/hello/world', console.log) // null, ['foo.txt']
 })
 ```
