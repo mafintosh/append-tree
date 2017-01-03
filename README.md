@@ -6,6 +6,8 @@ Model a tree structure on top off an append-only log.
 npm install append-tree
 ```
 
+[![build status](http://img.shields.io/travis/mafintosh/append-tree.svg?style=flat)](http://travis-ci.org/mafintosh/append-tree)
+
 The data structure stores a small index for every entry in the log, meaning no external indexing is required
 to model the tree. Also means that you can perform fast lookups on sparsely replicated logs.
 
