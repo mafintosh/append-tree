@@ -72,6 +72,14 @@ The node returned looks like this
 }
 ```
 
+#### `var oldTree = t.checkout(seq)`
+
+Checkout the at an older version. The checked out tree will be readonly.
+
+#### `var stream = t.history([options])`
+
+Stream out all the changes on the tree.
+
 ## License
 
 MIT
