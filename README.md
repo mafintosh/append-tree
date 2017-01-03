@@ -23,9 +23,14 @@ var t = tree(feed)
 
 t.append('/hello.txt', 'hello')
 t.append('/world.txt', 'world')
+t.append('/foo/bar.txt', 'baz')
 
 t.list('/', function (err, list) {
   console.log(list) // prints ['hello.txt', 'world.txt']
+})
+
+t.list('/foo', function (err, list) {
+  console.log(list) // prints ['bar.txt']
 })
 
 t.get('/hello.txt', function (err, node) {
