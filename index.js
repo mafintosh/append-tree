@@ -82,6 +82,8 @@ Tree.prototype._list = function (last, parts, cb) {
   var closest = i === parts.length
   var paths = (last.index ? indexEncoder.decode(last.index)[i] : null) || []
 
+  this._prio(paths)
+
   if (closest) {
     paths.push(last.seq)
     return cb(null, paths)
@@ -103,6 +105,12 @@ Tree.prototype._list = function (last, parts, cb) {
   }
 }
 
+Tree.prototype._prio = function (list) {
+  for (var i = 0; i < list.length; i++) {
+    if (!this.feed.has(list[i])) this.feed.get(list[i], noop)
+  }
+}
+
 Tree.prototype.get = function (path, cb) {
   var self = this
   this._getLast(function (err, last) {
@@ -118,6 +126,8 @@ Tree.prototype._get = function (path, last, parts, cb) {
 
   var self = this
   var paths = (last.index ? indexEncoder.decode(last.index)[i] : null) || []
+
+  this._prio(paths)
 
   loop(null, null)
 
@@ -162,6 +172,8 @@ Tree.prototype._proof = function (path, last, parts, result, cb) {
 
   var self = this
   var paths = (last.index ? indexEncoder.decode(last.index)[i] : null) || []
+
+  this._prio(paths)
 
   loop(null, null)
 
@@ -258,12 +270,12 @@ Tree.prototype._append = function (path, value, cb) {
 
       self._list(last, parts.slice(0, i), function (err, seqs) {
         if (err) return cb(err)
+
         self._filter(seqs || [], i, parts[i], function (err, seqs) {
           if (err) return cb(err)
 
           paths.push(seqs)
           i++
-
           loop()
         })
       })
@@ -284,6 +296,7 @@ function split (path) {
   if (path === '/') return []
   var parts = path.split('/')
   if (parts[0] === '') parts.shift()
+  if (parts.length && parts[parts.length - 1] === '') parts.pop()
   return parts
 }
 

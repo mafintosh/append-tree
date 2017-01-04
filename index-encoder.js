@@ -38,6 +38,7 @@ exports.encode = function (paths, buf, offset) {
 }
 
 exports.decode = function (buf, offset, end) {
+  if (!buf) return []
   if (!offset) offset = 0
   if (!end) end = buf.length
 
