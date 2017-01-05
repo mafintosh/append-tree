@@ -154,6 +154,24 @@ Tree.prototype.checkout = function (seq) {
   return new Tree(this.feed, {checkout: true, seq: seq})
 }
 
+Tree.prototype.count = function (path, cb) {
+  var self = this
+  this._getLast(function (err, last) {
+    if (err) return cb(err)
+    if (!last) return cb(notFound(path))
+    self._count(last, path, cb)
+  })
+}
+
+Tree.prototype._count = function (last, path, cb) {
+  var parts = split(path)
+  this._list(last, parts, function (err, seqs) {
+    if (err) return cb(err)
+    if (!seqs) return cb(notFound(path))
+    cb(null, seqs.length)
+  })
+}
+
 Tree.prototype.proof = function (path, cb) {
   var self = this
   var result = []

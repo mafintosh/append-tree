@@ -157,6 +157,32 @@ tape('proof', function (t) {
   })
 })
 
+tape('count', function (t) {
+  t.plan(5)
+
+  var tree = create()
+
+  tree.append('/hello.txt', 'a')
+  tree.append('/world.txt', 'b')
+  tree.append('/world/foo', 'a')
+
+  tree.flush(function () {
+    tree.count('/', function (err, cnt) {
+      t.error(err, 'no error')
+      t.same(cnt, 3)
+    })
+
+    tree.count('/world', function (err, cnt) {
+      t.error(err, 'no error')
+      t.same(cnt, 1)
+    })
+
+    tree.count('/nope', function (err) {
+      t.ok(err, 'had error')
+    })
+  })
+})
+
 function create () {
   return appendTree(hypercore(memdb()).createFeed())
 }
