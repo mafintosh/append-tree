@@ -183,6 +183,24 @@ tape('count', function (t) {
   })
 })
 
+tape('get on folder', function (t) {
+  t.plan(3)
+
+  var tree = create()
+
+  tree.append('/foo/bar/baz', 'a', function () {
+    tree.get('/foo', function (err) {
+      t.ok(err, 'had error')
+    })
+    tree.get('/foo/bar', function (err) {
+      t.ok(err, 'had error')
+    })
+    tree.get('/foo/bar/baz', function (err) {
+      t.error(err, 'no error')
+    })
+  })
+})
+
 function create () {
   return appendTree(hypercore(memdb()).createFeed())
 }

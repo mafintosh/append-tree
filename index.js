@@ -122,7 +122,10 @@ Tree.prototype.get = function (path, cb) {
 
 Tree.prototype._get = function (path, last, parts, cb) {
   var i = compare(last.path, parts)
-  if (i === parts.length) return cb(null, last)
+  if (i === parts.length) {
+    if (i < last.path.length) return cb(notFound(path))
+    return cb(null, last)
+  }
 
   var self = this
   var paths = (last.index ? indexEncoder.decode(last.index)[i] : null) || []
