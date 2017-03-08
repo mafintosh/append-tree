@@ -14,7 +14,7 @@ function Tree (feed, opts) {
   events.EventEmitter.call(this)
 
   this._offset = opts.offset || 0
-  this._codec = codecs(opts.valueEncoding)
+  this._codec = opts.codec || codecs(opts.valueEncoding)
   this._head = typeof opts.checkout === 'number' ? opts.checkout : -1
   this._lock = mutexify()
 
@@ -159,7 +159,7 @@ Tree.prototype.path = function (name, cb) {
 }
 
 Tree.prototype.checkout = function (seq) {
-  return new Tree(this.feed, {checkout: seq})
+  return new Tree(this.feed, {checkout: seq, offset: this._offset, codec: this._codec})
 }
 
 Tree.prototype._del = function (head, seq, names, cb) {
