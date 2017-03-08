@@ -338,7 +338,7 @@ Tree.prototype.ready = function (cb) {
 
   this.feed.ready(function (err) {
     if (err) return cb(err)
-    if ((self.version === -1 || self._head > -1) && self.feed.length > self._offset) self.version = self.feed.length - 1
+    if ((self.version === -1 || self._head === -1) && self.feed.length > self._offset) self.version = self.feed.length - 1
     cb(null)
   })
 }
