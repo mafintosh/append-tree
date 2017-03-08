@@ -1,18 +1,20 @@
 {
   "name": "append-tree",
   "version": "1.2.0",
-  "description": "Model a tree structure on top off an append-only log.",
+  "description": "Model a tree structure on top of an append-only log.",
   "main": "index.js",
   "dependencies": {
-    "from2": "^2.3.0",
+    "brfs": "^1.4.3",
+    "codecs": "^1.2.0",
+    "inherits": "^2.0.3",
     "mutexify": "^1.1.0",
     "protocol-buffers": "^3.2.1",
     "varint": "^5.0.0"
   },
   "devDependencies": {
-    "hypercore": "^4.17.0",
-    "memdb": "^1.3.1",
-    "standard": "^8.6.0",
+    "hypercore": "^5.3.0",
+    "random-access-memory": "^2.3.0",
+    "standard": "^9.0.1",
     "tape": "^4.6.3"
   },
   "scripts": {
@@ -21,6 +23,11 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/mafintosh/append-tree.git"
+  },
+  "browserify": {
+    "transform": [
+      "brfs"
+    ]
   },
   "author": "Mathias Buus (@mafintosh)",
   "license": "MIT",

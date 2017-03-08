@@ -1,101 +1,105 @@
 # append-tree
 
-Model a tree structure on top off an append-only log.
+Model a tree structure on top of an append-only log.
 
 ```
 npm install append-tree
 ```
 
-[![build status](http://img.shields.io/travis/mafintosh/append-tree.svg?style=flat)](http://travis-ci.org/mafintosh/append-tree)
+[![Build Status](https://travis-ci.org/mafintosh/append-tree.svg?branch=master)](https://travis-ci.org/mafintosh/append-tree)
 
-The data structure stores a small index for every entry in the log, meaning no external indexing is required
-to model the tree. Also means that you can perform fast lookups on sparsely replicated logs.
+The data structure stores a small index for every entry in the log, meaning no external indexing is required to model the tree. Also means that you can perform fast lookups on sparsely replicated logs.
 
 ## Usage
 
 ``` js
 var tree = require('append-tree')
-var memdb = require('memdb')
 var hypercore = require('hypercore')
 
-var feed = hypercore(memdb()).createFeed()
-var t = tree(feed)
+var feed = hypercore('./my-tree')
+var tr = tree(feed, {valueEncoding: 'utf-8'})
 
-t.append('/hello.txt', 'hello')
-t.append('/world.txt', 'world')
-t.append('/foo/bar.txt', 'baz', function () {
-  t.list('/', function (err, list) {
-    console.log(list) // prints ['hello.txt', 'world.txt']
-  })
+tr.put('/hello', 'world', function (err) {
+  if (err) throw err
 
-  t.list('/foo', function (err, list) {
-    console.log(list) // prints ['bar.txt']
-  })
+  tr.get('/hello', function (err, val) {
+    if (err) throw err
+    console.log(val) // <-- 'world'
 
-  t.get('/hello.txt', function (err, node) {
-    console.log(node.value.toString()) // prints hello
+    tr.list('/', function (err, list) {
+      if (err) throw err
+      console.log(list) // <-- ['hello']
+    })
   })
 })
 ```
 
 ## API
 
-#### `var t = tree(feed)`
+#### `var tr = tree(feed, [options])`
 
-Create a new tree instance. `feed` should be a hypercore feed.
+Create a new append tree.
 
-#### `t.append(key, value, [callback])`
+First option should be a [hypercore](https://github.com/mafintosh/hypercore) feed (or any append-only log that supports `.append()` and `.length`).
 
-Append a new value to the tree. Similar to a file system the key is split by `/` and each part treated as a tree node.
-`value` can be a buffer, string or `null`.
-
-If you append to the same key twice the last value is returned by subsequent `.get`s
-
-#### `t.list(key, callback)`
-
-List the immediate children of a node specified by `key` (similar to a readdir call).
-`callback` is called with an array of the relative names on the children.
-
-``` js
-t.append('/hello/world/foo.txt', 'bar', function () {
-  t.list('/', console.log) // null, ['hello']
-  t.list('/hello', console.log) // null, ['world']
-  t.list('/hello/world', console.log) // null, ['foo.txt']
-})
-```
-
-#### `t.get(key, callback)`
-
-Get the tree node specified by key.
-
-The node returned looks like this
+Options include:
 
 ``` js
 {
-  seq: 0, // log sequence number
-  path: ['hello', 'world', 'foo.txt'],
-  value: new Buffer('bar'),
-  index: <internal tree index buffer>
+  valueEncoding: 'binary' | 'utf-8' | 'json' | anyAbstractEncoding,
+  offset: 0 // optional feed offset where the tree starts
 }
 ```
 
-#### `var oldTree = t.checkout(seq)`
+#### `tr.put(name, value, [callback])`
 
-Checkout the at an older version. The checked out tree will be readonly.
+Insert a new node in the tree.
 
-#### `var stream = t.history([options])`
+#### `tr.del(name, [callback])`
 
-Stream out all the changes on the tree.
+Delete a node from the tree.
 
-Takes the following optional options:
+#### `tr.get(name, callback)`
 
-- `since` - Start streaming from this sequence number (defaults to the beginning of the stream)
-- `until` - Stop streaming when reaching this sequence number (defaults to the currently last block in the stream)
+Retrieve a value from the tree.
 
-#### `t.proof(key, callback)`
+#### `tr.list(name, callback)`
 
-Get the log indexes needed to verify the value of `key` as the latest one in the tree.
-Useful if you are replicating the log and want to avoid roundtrips.
+List all immediate children of a node. Similar to doing a `readdir` in a file system.
+
+#### `tr.path(name, callback)`
+
+Will call the callback with a list of feed indexes needed to lookup the given name.
+Useful if you are replicating the tree and want to avoid roundtrips.
+
+#### `var stream = tr.history([options])`
+
+Create a history stream containing all the changes in the tree. Accepts the same options as [hypercore's createReadStream](https://github.com/mafintosh/hypercore#var-stream--feedcreatereadstreamoptions) method.
+
+Each data event looks like this
+
+``` js
+{
+  type: 'put' | 'del',
+  version: 42, // version of the tree at this point in time
+  name: '/foo',
+  value: new Buffer('bar') // null if it is a del
+}
+```
+
+#### `tr.version`
+
+Number describing the current version of the tree.
+
+Populated initially after `ready` event. Will be `-1` before.
+
+#### `tr.on('ready', cb)`
+
+Fired when the tree is ready and all properties have been populated.
+
+#### `var oldTree = tr.checkout(version)`
+
+Checkout an old readonly version of the tree. `.get`, `.list` will return the same values as the tree did at the old version
 
 ## License
 
