@@ -358,7 +358,7 @@ Tree.prototype.history = function (opts) {
         type: node.value ? 'put' : 'del',
         version: version++,
         name: node.name,
-        value: self._codec.decode(node.value)
+        value: node.value && self._codec.decode(node.value)
       }
     }
   }
