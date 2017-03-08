@@ -89,9 +89,13 @@ Tree.prototype._put = function (head, seq, names, value, cb) {
   }
 }
 
-Tree.prototype.list = function (name, cb) {
+Tree.prototype.list = function (name, opts, cb) {
+  if (typeof opts === 'function') return this.list(name, null, opts)
+  if (!opts) opts = {}
+
   var self = this
   var names = split(name)
+  var ns = !!(opts.node || opts.nodes)
 
   this.head(function (err, head, seq) {
     if (err) return cb(err)
@@ -106,7 +110,7 @@ Tree.prototype.list = function (name, cb) {
       var list = []
       for (var i = 0; i < nodes.length; i++) {
         var nodeNames = split(nodes[i].name)
-        if (nodeNames.length > names.length) list.push(nodeNames[names.length])
+        if (nodeNames.length > names.length) list.push(ns ? nodes[i] : nodeNames[names.length])
       }
 
       cb(null, list)
@@ -132,14 +136,17 @@ Tree.prototype._list = function (head, seq, names, cb) {
   this._getAll(index, cb)
 }
 
-Tree.prototype.get = function (name, cb) {
+Tree.prototype.get = function (name, opts, cb) {
+  if (typeof opts === 'function') return this.get(name, null, opts)
+  if (!opts) opts = {}
+
   var names = split(name)
   var self = this
 
   this.head(function (err, head, seq) {
     if (err) return cb(err)
     if (!head) return cb(notFound(names))
-    self._get(head, seq, names, null, cb)
+    self._get(head, seq, names, null, opts.node, cb)
   })
 }
 
@@ -151,7 +158,7 @@ Tree.prototype.path = function (name, cb) {
   this.head(function (err, head, seq) {
     if (err) return cb(err)
     if (!head) return cb(notFound(names))
-    self._get(head, seq, names, path, function (err) {
+    self._get(head, seq, names, path, false, function (err) {
       if (err && !err.notFound) return cb(err)
       cb(null, path)
     })
@@ -254,7 +261,7 @@ Tree.prototype.del = function (name, cb) {
   })
 }
 
-Tree.prototype._get = function (head, seq, names, record, cb) {
+Tree.prototype._get = function (head, seq, names, record, asNode, cb) {
   var self = this
   var headNames = split(head.name)
   var cmp = compare(names, headNames)
@@ -262,6 +269,7 @@ Tree.prototype._get = function (head, seq, names, record, cb) {
   if (record) record.push(seq)
 
   if (cmp === headNames.length && cmp === names.length) {
+    if (asNode) return cb(null, this._node(head, seq))
     if (!head.value) return cb(notFound(names))
     return cb(null, this._codec.decode(head.value))
   }
@@ -289,7 +297,7 @@ Tree.prototype._get = function (head, seq, names, record, cb) {
     if (node) {
       var nodeNames = split(node.name)
       if ((cmp < nodeNames.length ? nodeNames[cmp] : null) === target) {
-        return self._get(node, seq, names, record, cb)
+        return self._get(node, seq, names, record, asNode, cb)
       }
     }
 
@@ -353,17 +361,20 @@ Tree.prototype.history = function (opts) {
 
   opts.valueEncoding = {
     decode: function (buf) {
-      var node = messages.Node.decode(buf)
-      return {
-        type: node.value ? 'put' : 'del',
-        version: version++,
-        name: node.name,
-        value: node.value && self._codec.decode(node.value)
-      }
+      return self._node(messages.Node.decode(buf), version++)
     }
   }
 
   return this.feed.createReadStream(opts)
+}
+
+Tree.prototype._node = function (node, version) {
+  return {
+    type: node.value ? 'put' : 'del',
+    version: version,
+    name: node.name,
+    value: node.value && this._codec.decode(node.value)
+  }
 }
 
 Tree.prototype._init = function (names, value, cb) {
