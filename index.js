@@ -353,7 +353,7 @@ Tree.prototype.ready = function (cb) {
 
 Tree.prototype.history = function (opts) {
   if (!opts) opts = {}
-  if (this._offset) opts.start = Math.max(opts.start, this._offset)
+  if (this._offset) opts.start = Math.max(opts.start || 0, this._offset)
   if (this._head > -1) opts.end = this._head + 1
 
   var version = opts.start || 0
