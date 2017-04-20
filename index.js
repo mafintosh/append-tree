@@ -18,7 +18,7 @@ function Tree (feed, opts) {
   this._codec = opts.codec || codecs(opts.valueEncoding)
   this._head = typeof opts.checkout === 'number' ? opts.checkout : -1
   this._lock = mutexify()
-  this._cache = cache(65536, {indexedValues: true})
+  this._cache = opts.cache === false ? null : cache(65536, {indexedValues: true})
 
   this.feed = feed
   this.version = this._head
@@ -87,7 +87,7 @@ Tree.prototype._put = function (head, seq, names, value, cb) {
       return
     }
 
-    self._list(head, seq, names.slice(0, i++), loop)
+    self._list(head, seq, names.slice(0, i++), null, loop)
   }
 }
 
@@ -99,20 +99,22 @@ Tree.prototype.list = function (name, opts, cb) {
   var names = split(name)
   var ns = !!(opts.node || opts.nodes)
 
-  this.head(function (err, head, seq) {
+  this.head(opts, function (err, head, seq) {
     if (err) return cb(err)
     if (!head) return cb(notFound(names))
 
-    self._list(head, seq, names, onnodes)
+    self._list(head, seq, names, opts, onnodes)
 
-    function onnodes (err, nodes) {
+    function onnodes (err, nodes, seqs) {
       if (err) return cb(err)
       if (!nodes.length) return cb(notFound(names))
 
       var list = []
       for (var i = 0; i < nodes.length; i++) {
         var nodeNames = split(nodes[i].name)
-        if (nodeNames.length > names.length) list.push(ns ? nodes[i] : nodeNames[names.length])
+        if (nodeNames.length > names.length) {
+          list.push(ns ? self._node(nodes[i], seqs[i]) : nodeNames[names.length])
+        }
       }
 
       cb(null, list)
@@ -120,7 +122,7 @@ Tree.prototype.list = function (name, opts, cb) {
   })
 }
 
-Tree.prototype._list = function (head, seq, names, cb) {
+Tree.prototype._list = function (head, seq, names, opts, cb) {
   var headIndex = this._inflate(seq, head.paths)
   var cmp = compare(split(head.name), names)
 
@@ -129,13 +131,13 @@ Tree.prototype._list = function (head, seq, names, cb) {
 
   if (!closest) {
     if (!index || !index.length || (index.length === 1 && index[0] === seq)) return cb(null, [], [])
-    this._closer(names, cmp, index, cb)
+    this._closer(names, cmp, index, opts, cb)
     return
   }
 
   if (!index || !index.length) return cb(null, [], [])
 
-  this._getAll(index, cb)
+  this._getAll(index, opts, cb)
 }
 
 Tree.prototype.get = function (name, opts, cb) {
@@ -145,22 +147,25 @@ Tree.prototype.get = function (name, opts, cb) {
   var names = split(name)
   var self = this
 
-  this.head(function (err, head, seq) {
+  this.head(opts, function (err, head, seq) {
     if (err) return cb(err)
     if (!head) return cb(notFound(names))
-    self._get(head, seq, names, null, opts.node, cb)
+    self._get(head, seq, names, null, opts, cb)
   })
 }
 
-Tree.prototype.path = function (name, cb) {
+Tree.prototype.path = function (name, opts, cb) {
+  if (typeof opts === 'function') return this.path(name, null, opts)
+  if (!opts) opts = {}
+
   var names = split(name)
   var path = []
   var self = this
 
-  this.head(function (err, head, seq) {
+  this.head(opts, function (err, head, seq) {
     if (err) return cb(err)
     if (!head) return cb(notFound(names))
-    self._get(head, seq, names, path, false, function (err) {
+    self._get(head, seq, names, path, opts, function (err) {
       if (err && !err.notFound) return cb(err)
       cb(null, path)
     })
@@ -224,12 +229,12 @@ Tree.prototype._del = function (head, seq, names, cb) {
         return
       }
 
-      self._list(head, seq, names.slice(0, i++), loop)
+      self._list(head, seq, names.slice(0, i++), null, loop)
     }
   })
 
   function closest (j, cb) {
-    self._list(head, seq, names.slice(0, j), function (err, nodes, seqs) {
+    self._list(head, seq, names.slice(0, j), null, function (err, nodes, seqs) {
       if (err) return cb(err)
 
       for (var i = 0; i < nodes.length; i++) {
@@ -263,7 +268,7 @@ Tree.prototype.del = function (name, cb) {
   })
 }
 
-Tree.prototype._get = function (head, seq, names, record, asNode, cb) {
+Tree.prototype._get = function (head, seq, names, record, opts, cb) {
   var self = this
   var headNames = split(head.name)
   var cmp = compare(names, headNames)
@@ -271,7 +276,7 @@ Tree.prototype._get = function (head, seq, names, record, asNode, cb) {
   if (record) record.push(seq)
 
   if (cmp === headNames.length && cmp === names.length) {
-    if (asNode) return cb(null, this._node(head, seq))
+    if (opts.node) return cb(null, this._node(head, seq))
     if (!head.value) return cb(notFound(names))
     return cb(null, this._codec.decode(head.value))
   }
@@ -290,7 +295,7 @@ Tree.prototype._get = function (head, seq, names, record, asNode, cb) {
   var missing = len
 
   for (var i = 0; i < len; i++) {
-    this._getAndDecode(index[i], onget)
+    this._getAndDecode(index[i], opts, onget)
   }
 
   function onget (err, node, seq) {
@@ -299,7 +304,7 @@ Tree.prototype._get = function (head, seq, names, record, asNode, cb) {
     if (node) {
       var nodeNames = split(node.name)
       if ((cmp < nodeNames.length ? nodeNames[cmp] : null) === target) {
-        return self._get(node, seq, names, record, asNode, cb)
+        return self._get(node, seq, names, record, opts, cb)
       }
     }
 
@@ -307,7 +312,7 @@ Tree.prototype._get = function (head, seq, names, record, asNode, cb) {
   }
 }
 
-Tree.prototype._closer = function (names, cmp, index, cb) {
+Tree.prototype._closer = function (names, cmp, index, opts, cb) {
   var self = this
   var target = names[cmp]
   var error = null
@@ -315,7 +320,7 @@ Tree.prototype._closer = function (names, cmp, index, cb) {
   var done = false
 
   for (var i = 0; i < index.length; i++) {
-    this._getAndDecode(index[i], onget)
+    this._getAndDecode(index[i], opts, onget)
   }
 
   function onget (err, node, seq) {
@@ -323,7 +328,7 @@ Tree.prototype._closer = function (names, cmp, index, cb) {
     if (err) error = err
 
     if (node && split(node.name)[cmp] === target) {
-      self._list(node, seq, names, cb)
+      self._list(node, seq, names, opts, cb)
       return
     }
 
@@ -331,14 +336,15 @@ Tree.prototype._closer = function (names, cmp, index, cb) {
   }
 }
 
-Tree.prototype.head = function (cb) {
-  if (this._head > -1) return this._getAndDecode(this._head, cb)
+Tree.prototype.head = function (opts, cb) {
+  if (typeof opts === 'function') return this.head(null, opts)
+  if (this._head > -1) return this._getAndDecode(this._head, opts, cb)
 
   var self = this
 
   this.ready(function (err) {
     if (err) return cb(err)
-    if (self.feed.length > self._offset) self._getAndDecode(self.feed.length - 1, cb)
+    if (self.feed.length > self._offset) self._getAndDecode(self.feed.length - 1, opts, cb)
     else cb(null, null, -1)
   })
 }
@@ -396,26 +402,30 @@ Tree.prototype._init = function (names, value, cb) {
   this.feed.append(messages.Node.encode(node), cb)
 }
 
-Tree.prototype._getAndDecode = function (seq, cb) {
+Tree.prototype._getAndDecode = function (seq, opts, cb) {
+  if (opts && opts.cached) opts.wait = false
+
   var self = this
-  var cached = this._cache.get(seq)
+  var cached = this._cache && this._cache.get(seq)
   if (cached) return cb(null, cached, seq)
 
-  this.feed.get(seq, function (err, value) {
+  this.feed.get(seq, opts, function (err, value) {
     if (err) return cb(err)
     var node = new Node(messages.Node.decode(value), seq)
-    self._cache.set(seq, node)
+    if (self._cache) self._cache.set(seq, node)
     cb(null, node, seq)
   })
 }
 
-Tree.prototype._getAll = function (seqs, cb) {
+Tree.prototype._getAll = function (seqs, opts, cb) {
+  if (opts && opts.cached) seqs = this._onlyCached(seqs)
+
   var nodes = new Array(seqs.length)
   var missing = seqs.length
   var error = null
 
   if (!missing) return cb(null, nodes, seqs)
-  for (var i = 0; i < seqs.length; i++) this._getAndDecode(seqs[i], get)
+  for (var i = 0; i < seqs.length; i++) this._getAndDecode(seqs[i], opts, get)
 
   function get (err, node, seq) {
     if (err) error = err
@@ -424,6 +434,16 @@ Tree.prototype._getAll = function (seqs, cb) {
     if (error) cb(error)
     else cb(null, nodes, seqs)
   }
+}
+
+Tree.prototype._onlyCached = function (seqs) {
+  var cachedSeqs = []
+
+  for (var i = 0; i < seqs.length; i++) {
+    if (this.feed.has(seqs[i])) cachedSeqs.push(seqs[i])
+  }
+
+  return cachedSeqs
 }
 
 Tree.prototype._deflate = function (seq, index) {

@@ -436,6 +436,30 @@ tape('history stream', function (t) {
   })
 })
 
+tape('cached', function (t) {
+  t.plan(5)
+
+  var tr = create({cache: false})
+
+  tr.put('/', 'foo')
+  tr.put('/foo', 'bar')
+  tr.put('/bar', 'baz', function () {
+    tr.feed.clear(1, function () {
+      tr.list('/', {cached: true}, function (err, list) {
+        t.error(err, 'no error')
+        t.same(list, ['bar'])
+      })
+      tr.get('/bar', {cached: true}, function (err, val) {
+        t.error(err, 'no error')
+        t.same(val, new Buffer('baz'))
+      })
+      tr.get('/foo', {cached: true}, function (err) {
+        t.ok(err, 'had error')
+      })
+    })
+  })
+})
+
 function create (opts) {
   return tree(hypercore(ram), opts)
 }
