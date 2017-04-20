@@ -4,6 +4,7 @@
   "description": "Model a tree structure on top of an append-only log.",
   "main": "index.js",
   "dependencies": {
+    "array-lru": "^1.1.1",
     "brfs": "^1.4.3",
     "codecs": "^1.2.0",
     "inherits": "^2.0.3",

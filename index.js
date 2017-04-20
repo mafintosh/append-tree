@@ -4,6 +4,7 @@ var messages = require('./messages')
 var codecs = require('codecs')
 var inherits = require('inherits')
 var events = require('events')
+var cache = require('array-lru')
 
 module.exports = Tree
 
@@ -17,6 +18,7 @@ function Tree (feed, opts) {
   this._codec = opts.codec || codecs(opts.valueEncoding)
   this._head = typeof opts.checkout === 'number' ? opts.checkout : -1
   this._lock = mutexify()
+  this._cache = cache(65536, {indexedValues: true})
 
   this.feed = feed
   this.version = this._head
@@ -77,7 +79,7 @@ Tree.prototype._put = function (head, seq, names, value, cb) {
       var node = {
         name: join(names),
         value: self._codec.encode(value),
-        index: self._deflate(len, index)
+        paths: self._deflate(len, index)
       }
 
       self.version = self.feed.length
@@ -119,7 +121,7 @@ Tree.prototype.list = function (name, opts, cb) {
 }
 
 Tree.prototype._list = function (head, seq, names, cb) {
-  var headIndex = this._inflate(seq, head.index)
+  var headIndex = this._inflate(seq, head.paths)
   var cmp = compare(split(head.name), names)
 
   var index = cmp < headIndex.length && headIndex[cmp]
@@ -214,7 +216,7 @@ Tree.prototype._del = function (head, seq, names, cb) {
         var node = {
           name: join(names),
           value: null,
-          index: self._deflate(len, index)
+          paths: self._deflate(len, index)
         }
 
         self.version = self.feed.length
@@ -274,7 +276,7 @@ Tree.prototype._get = function (head, seq, names, record, asNode, cb) {
     return cb(null, this._codec.decode(head.value))
   }
 
-  var inflated = this._inflate(seq, head.index)
+  var inflated = this._inflate(seq, head.paths)
   if (cmp >= inflated.length) return cb(notFound(names))
 
   var index = inflated[cmp]
@@ -387,7 +389,7 @@ Tree.prototype._init = function (names, value, cb) {
   var node = {
     name: join(names),
     value: this._codec.encode(value),
-    index: this._deflate(this.feed.length, index)
+    paths: this._deflate(this.feed.length, index)
   }
 
   this.version = this.feed.length
@@ -395,9 +397,14 @@ Tree.prototype._init = function (names, value, cb) {
 }
 
 Tree.prototype._getAndDecode = function (seq, cb) {
+  var self = this
+  var cached = this._cache.get(seq)
+  if (cached) return cb(null, cached, seq)
+
   this.feed.get(seq, function (err, value) {
     if (err) return cb(err)
-    var node = messages.Node.decode(value)
+    var node = new Node(messages.Node.decode(value), seq)
+    self._cache.set(seq, node)
     cb(null, node, seq)
   })
 }
@@ -516,4 +523,11 @@ function compare (a, b) {
 
 function sort (a, b) {
   return a - b
+}
+
+function Node (node, seq) {
+  this.index = seq
+  this.name = node.name
+  this.value = node.value
+  this.paths = node.paths
 }
