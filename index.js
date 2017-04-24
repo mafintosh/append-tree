@@ -1,3 +1,4 @@
+var from = require('from2')
 var mutexify = require('mutexify')
 var varint = require('varint')
 var messages = require('./messages')
@@ -376,6 +377,10 @@ Tree.prototype.history = function (opts) {
   return this.feed.createReadStream(opts)
 }
 
+Tree.prototype.diff = function (tree, opts) {
+  return diff(this, tree, opts)
+}
+
 Tree.prototype._node = function (node, version) {
   return {
     type: node.value ? 'put' : 'del',
@@ -550,4 +555,78 @@ function Node (node, seq) {
   this.name = node.name
   this.value = node.value
   this.paths = node.paths
+}
+
+function diff (older, latest, opts) {
+  if (!opts) opts = {}
+
+  var diffPuts = opts.puts !== false
+  var diffDels = opts.dels !== false
+  var queue = ['/']
+
+  var stream = from.obj(read)
+  return stream
+
+  function read (size, cb) {
+    if (!queue.length) return cb(null, null)
+    visit(queue.shift(), function (err, result) {
+      if (err) return cb(err)
+      if (!result.length) return read(size, cb)
+      for (var i = 0; i < result.length - 1; i++) {
+        stream.push(result[i])
+      }
+      cb(null, result[result.length - 1])
+    })
+  }
+
+  function push (dir, isPut, node, result) {
+    if (isPut && !diffPuts) return
+    if (!isPut && !diffDels) return
+
+    var name = node.name
+    var nameDir = '/' + split(name).slice(0, split(dir).length + 1).join('/')
+
+    if (name === nameDir) {
+      result.push({
+        type: isPut ? 'put' : 'del',
+        name: node.name,
+        version: node.version,
+        value: node.value
+      })
+    }
+
+    queue.push(nameDir)
+  }
+
+  function visit (dir, cb) {
+    latest.list(dir, {node: true}, function (err, a) {
+      if (err && !err.notFound) return cb(err)
+      if (!a) a = []
+
+      older.list(dir, {node: true}, function (err, b) {
+        if (err && !err.notFound) return cb(err)
+        if (!b) b = []
+
+        var result = []
+        var i = 0
+        var j = 0
+
+        while (i < a.length && j < b.length) {
+          if (a[i].version === b[j].version) {
+            i++
+            j++
+          } else if (a[i].version < b[j].version) {
+            push(dir, true, a[i++], result)
+          } else {
+            push(dir, false, b[j++], result)
+          }
+        }
+
+        for (; i < a.length; i++) push(dir, true, a[i], result)
+        for (; j < b.length; j++) push(dir, false, b[j], result)
+
+        cb(null, result)
+      })
+    })
+  }
 }

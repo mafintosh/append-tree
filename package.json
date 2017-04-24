@@ -7,6 +7,7 @@
     "array-lru": "^1.1.1",
     "brfs": "^1.4.3",
     "codecs": "^1.2.0",
+    "from2": "^2.3.0",
     "inherits": "^2.0.3",
     "mutexify": "^1.1.0",
     "protocol-buffers": "^3.2.1",
