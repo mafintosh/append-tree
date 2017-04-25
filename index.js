@@ -23,6 +23,7 @@ function Tree (feed, opts) {
   this._wait = opts.wait !== false
   this._cached = !!opts.cached
   this._asNode = !!opts.node
+  this._readonly = !!opts.readonly
 
   this.feed = feed
   this.version = this._head
@@ -43,7 +44,7 @@ Tree.prototype.put = function (name, value, cb) {
   this._lock(function (release) {
     self.head(function (err, head, seq) {
       if (err) return done(err)
-      if (self._checkout > -1) return done(new Error('Cannot delete on a checkout'))
+      if (self._readonly) return done(new Error('Cannot delete on a checkout'))
       if (!head) self._init(names, value, done)
       else self._put(head, seq, names, value, done)
     })
@@ -176,15 +177,18 @@ Tree.prototype.path = function (name, opts, cb) {
   })
 }
 
-Tree.prototype.checkout = function (seq) {
+Tree.prototype.checkout = function (seq, opts) {
+  opts = this._defaultOpts(opts)
+
   return new Tree(this.feed, {
     checkout: seq,
+    readonly: true,
     offset: this._offset,
-    codec: this._codec,
-    cache: this._cache || false,
-    node: this._asNode,
-    wait: this._wait,
-    cached: this._cached
+    codec: opts.valueEncoding ? codecs(opts.valueEncoding) : this._codec,
+    cache: this._cache || opts.cache || false,
+    node: opts.node,
+    wait: opts.wait,
+    cached: opts.cached
   })
 }
 
@@ -269,7 +273,7 @@ Tree.prototype.del = function (name, cb) {
   this._lock(function (release) {
     self.head(function (err, head, seq) {
       if (err) return done(err)
-      if (self._checkout > -1) return done(new Error('Cannot delete on a checkout'))
+      if (self._readonly) return done(new Error('Cannot delete on a checkout'))
       if (!head) return done(null)
       else self._del(head, seq, names, done)
     })
@@ -350,7 +354,8 @@ Tree.prototype._closer = function (names, cmp, index, opts, cb) {
 
 Tree.prototype.head = function (opts, cb) {
   if (typeof opts === 'function') return this.head(null, opts)
-  if (this._head > -1) return this._getAndDecode(this._head, opts, cb)
+  if (this._head >= this._offset) return this._getAndDecode(this._head, opts, cb)
+  if (this._readonly) return cb(null, null, -1)
 
   var self = this
 
@@ -381,6 +386,7 @@ Tree.prototype.history = function (opts) {
   var self = this
 
   opts.valueEncoding = {
+    encode: function () {},
     decode: function (buf) {
       return self._node(messages.Node.decode(buf), version++)
     }
@@ -389,8 +395,85 @@ Tree.prototype.history = function (opts) {
   return this.feed.createReadStream(opts)
 }
 
-Tree.prototype.diff = function (tree, opts) {
-  return diff(this, tree, this._defaultOpts(opts))
+Tree.prototype.diff = function (toTree, opts) {
+  if (typeof toTree === 'number') toTree = this.checkout(toTree)
+  opts = this._defaultOpts(opts)
+
+  var fromTree = this
+  var diffPuts = opts.puts !== false
+  var diffDels = opts.dels !== false
+  var queue = ['/']
+
+  if (opts.reverse) {
+    fromTree = toTree
+    toTree = this
+  }
+
+  var stream = from.obj(read)
+  return stream
+
+  function read (size, cb) {
+    if (!queue.length) return cb(null, null)
+    visit(queue.shift(), function (err, result) {
+      if (err) return cb(err)
+      if (!result.length) return read(size, cb)
+      for (var i = 0; i < result.length - 1; i++) {
+        stream.push(result[i])
+      }
+      cb(null, result[result.length - 1])
+    })
+  }
+
+  function push (dir, isPut, node, result) {
+    if (isPut && !diffPuts) return
+    if (!isPut && !diffDels) return
+
+    var name = node.name
+    var nameDir = '/' + split(name).slice(0, split(dir).length + 1).join('/')
+
+    if (name === nameDir) {
+      result.push({
+        type: isPut ? 'put' : 'del',
+        name: node.name,
+        version: node.version,
+        value: node.value
+      })
+    }
+
+    queue.push(nameDir)
+  }
+
+  function visit (dir, cb) {
+    toTree.list(dir, {node: true}, function (err, a) {
+      if (err && !err.notFound) return cb(err)
+      if (!a) a = []
+
+      fromTree.list(dir, {node: true}, function (err, b) {
+        if (err && !err.notFound) return cb(err)
+        if (!b) b = []
+
+        var result = []
+        var i = 0
+        var j = 0
+
+        while (i < a.length && j < b.length) {
+          if (a[i].version === b[j].version) {
+            i++
+            j++
+          } else if (a[i].version < b[j].version) {
+            push(dir, true, a[i++], result)
+          } else {
+            push(dir, false, b[j++], result)
+          }
+        }
+
+        for (; i < a.length; i++) push(dir, true, a[i], result)
+        for (; j < b.length; j++) push(dir, false, b[j], result)
+
+        cb(null, result)
+      })
+    })
+  }
 }
 
 Tree.prototype._node = function (node, version) {
@@ -581,78 +664,4 @@ function getCache (opts) {
   if (opts.cache === false) return null
   if (opts.cache === true || !opts.cache) return cache(65536, {indexedValues: true})
   return opts.cache
-}
-
-function diff (older, latest, opts) {
-  if (!opts) opts = {}
-
-  var diffPuts = opts.puts !== false
-  var diffDels = opts.dels !== false
-  var queue = ['/']
-
-  var stream = from.obj(read)
-  return stream
-
-  function read (size, cb) {
-    if (!queue.length) return cb(null, null)
-    visit(queue.shift(), function (err, result) {
-      if (err) return cb(err)
-      if (!result.length) return read(size, cb)
-      for (var i = 0; i < result.length - 1; i++) {
-        stream.push(result[i])
-      }
-      cb(null, result[result.length - 1])
-    })
-  }
-
-  function push (dir, isPut, node, result) {
-    if (isPut && !diffPuts) return
-    if (!isPut && !diffDels) return
-
-    var name = node.name
-    var nameDir = '/' + split(name).slice(0, split(dir).length + 1).join('/')
-
-    if (name === nameDir) {
-      result.push({
-        type: isPut ? 'put' : 'del',
-        name: node.name,
-        version: node.version,
-        value: node.value
-      })
-    }
-
-    queue.push(nameDir)
-  }
-
-  function visit (dir, cb) {
-    latest.list(dir, {node: true}, function (err, a) {
-      if (err && !err.notFound) return cb(err)
-      if (!a) a = []
-
-      older.list(dir, {node: true}, function (err, b) {
-        if (err && !err.notFound) return cb(err)
-        if (!b) b = []
-
-        var result = []
-        var i = 0
-        var j = 0
-
-        while (i < a.length && j < b.length) {
-          if (a[i].version === b[j].version) {
-            i++
-            j++
-          } else if (a[i].version < b[j].version) {
-            push(dir, true, a[i++], result)
-          } else {
-            push(dir, false, b[j++], result)
-          }
-        }
-
-        for (; i < a.length; i++) push(dir, true, a[i], result)
-        for (; j < b.length; j++) push(dir, false, b[j], result)
-
-        cb(null, result)
-      })
-    })
-  }
 }

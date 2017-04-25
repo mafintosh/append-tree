@@ -498,6 +498,159 @@ tape('default options', function (t) {
   })
 })
 
+tape('diff', function (t) {
+  var tr = create()
+
+  tr.put('/foo', 'bar')
+  tr.put('/bar', 'baz', function () {
+    var stream = tr.checkout(0).diff(tr)
+    var expected = [{type: 'put', name: '/bar', value: new Buffer('baz'), version: 1}]
+
+    stream.on('data', function (data) {
+      t.same(data, expected.shift())
+    })
+    stream.on('end', function () {
+      t.same(expected.length, 0, 'no more data')
+      t.end()
+    })
+  })
+})
+
+tape('diff empty', function (t) {
+  var tr = create()
+
+  tr.put('/foo', 'bar')
+  tr.put('/bar', 'baz', function () {
+    var stream = tr.checkout(-1).diff(tr)
+    var expected = [{
+      type: 'put',
+      name: '/foo',
+      value: new Buffer('bar'),
+      version: 0
+    }, {
+      type: 'put',
+      name: '/bar',
+      value: new Buffer('baz'),
+      version: 1
+    }]
+
+    stream.on('data', function (data) {
+      t.same(data, expected.shift())
+    })
+    stream.on('end', function () {
+      t.same(expected.length, 0, 'no more data')
+      t.end()
+    })
+  })
+})
+
+tape('diff self', function (t) {
+  var tr = create()
+
+  tr.put('/foo', 'bar')
+  tr.put('/bar', 'baz', function () {
+    var stream = tr.diff(tr)
+
+    stream.on('data', function (data) {
+      t.fail('no diff')
+    })
+    stream.on('end', function () {
+      t.pass('diff ends')
+      t.end()
+    })
+  })
+})
+
+tape('diff with dels', function (t) {
+  var tr = create()
+
+  tr.put('/foo', 'bar')
+  tr.put('/bar', 'foo')
+  tr.del('/foo', function () {
+    var stream = tr.checkout(0).diff(tr)
+    var expected = [{
+      type: 'del',
+      name: '/foo',
+      value: new Buffer('bar'),
+      version: 0
+    }, {
+      type: 'put',
+      name: '/bar',
+      value: new Buffer('foo'),
+      version: 1
+    }]
+
+    stream.on('data', function (data) {
+      t.same(data, expected.shift())
+    })
+
+    stream.on('end', function () {
+      t.same(expected.length, 0, 'no more data')
+      t.end()
+    })
+  })
+})
+
+tape('diff with overwrites', function (t) {
+  var tr = create()
+
+  tr.put('/foo', 'bar')
+  tr.put('/bar', 'foo')
+  tr.put('/foo', 'baz', function () {
+    var stream = tr.checkout(0).diff(tr)
+    var expected = [{
+      type: 'del',
+      name: '/foo',
+      value: new Buffer('bar'),
+      version: 0
+    }, {
+      type: 'put',
+      name: '/bar',
+      value: new Buffer('foo'),
+      version: 1
+    }, {
+      type: 'put',
+      name: '/foo',
+      value: new Buffer('baz'),
+      version: 2
+    }]
+
+    stream.on('data', function (data) {
+      t.same(data, expected.shift())
+    })
+
+    stream.on('end', function () {
+      t.same(expected.length, 0, 'no more data')
+      t.end()
+    })
+  })
+})
+
+tape('diff only dels', function (t) {
+  var tr = create()
+
+  tr.put('/foo', 'bar')
+  tr.put('/bar', 'foo')
+  tr.put('/foo', 'baz', function () {
+    var stream = tr.checkout(0).diff(tr, {puts: false, dels: true})
+    var expected = [{
+      type: 'del',
+      name: '/foo',
+      value: new Buffer('bar'),
+      version: 0
+    }]
+
+    stream.on('data', function (data) {
+      t.same(data, expected.shift())
+    })
+
+    stream.on('end', function () {
+      t.same(expected.length, 0, 'no more data')
+      t.end()
+    })
+  })
+})
+
 function create (opts) {
   return tree(hypercore(ram), opts)
 }

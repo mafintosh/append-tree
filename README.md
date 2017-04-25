@@ -59,18 +59,18 @@ Insert a new node in the tree.
 
 Delete a node from the tree.
 
-#### `tr.get(name, callback)`
+#### `tr.get(name, [options], callback)`
 
-Retrieve a value from the tree.
+Retrieve a value from the tree. Accepts the same options as [hypercore's get](https://github.com/mafintosh/hypercore#feedgetindex-options-callback) method.
 
-#### `tr.list(name, callback)`
+#### `tr.list(name, [options], callback)`
 
-List all immediate children of a node. Similar to doing a `readdir` in a file system.
+List all immediate children of a node. Similar to doing a `readdir` in a file system. Accepts the same options as [hypercore's get](https://github.com/mafintosh/hypercore#feedgetindex-options-callback) method.
 
-#### `tr.path(name, callback)`
+#### `tr.path(name, [options], callback)`
 
 Will call the callback with a list of feed indexes needed to lookup the given name.
-Useful if you are replicating the tree and want to avoid roundtrips.
+Useful if you are replicating the tree and want to avoid roundtrips. Accepts the same options as [hypercore's get](https://github.com/mafintosh/hypercore#feedgetindex-options-callback) method.
 
 #### `var stream = tr.history([options])`
 
@@ -97,9 +97,17 @@ Populated initially after `ready` event. Will be `-1` before.
 
 Fired when the tree is ready and all properties have been populated.
 
-#### `var oldTree = tr.checkout(version)`
+#### `var oldTree = tr.checkout(version, [options])`
 
-Checkout an old readonly version of the tree. `.get`, `.list` will return the same values as the tree did at the old version
+Checkout an old readonly version of the tree. `.get`, `.list` will return the same values as the tree did at the old version.
+Accepts the same options as the tree constructor.
+
+#### `var stream = tr.diff(checkout, [options])`
+
+Diff a tree against another checkout of the tree.
+Will emit the same data as the history stream but representing the diff from `tr` to `checkout`.
+
+Accepts the same options as [hypercore's createReadStream](https://github.com/mafintosh/hypercore#var-stream--feedcreatereadstreamoptions) method.
 
 ## License
 
