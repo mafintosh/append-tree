@@ -460,6 +460,44 @@ tape('cached', function (t) {
   })
 })
 
+tape('default options', function (t) {
+  t.plan(6)
+
+  var tr = create({node: true})
+
+  tr.put('/', 'foo')
+  tr.put('/foo', 'bar')
+  tr.put('/bar', 'baz', function () {
+    tr.list('/', function (err, list) {
+      t.error(err, 'no error')
+      t.same(list, [{
+        type: 'put',
+        name: '/foo',
+        version: 1,
+        value: new Buffer('bar')
+      }, {
+        type: 'put',
+        name: '/bar',
+        version: 2,
+        value: new Buffer('baz')
+      }])
+    })
+    tr.get('/bar', function (err, val) {
+      t.error(err, 'no error')
+      t.same(val, {
+        type: 'put',
+        name: '/bar',
+        version: 2,
+        value: new Buffer('baz')
+      })
+    })
+    tr.get('/bar', {node: false}, function (err, val) {
+      t.error(err, 'no error')
+      t.same(val, new Buffer('baz'))
+    })
+  })
+})
+
 function create (opts) {
   return tree(hypercore(ram), opts)
 }

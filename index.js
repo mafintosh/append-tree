@@ -19,7 +19,10 @@ function Tree (feed, opts) {
   this._codec = opts.codec || codecs(opts.valueEncoding)
   this._head = typeof opts.checkout === 'number' ? opts.checkout : -1
   this._lock = mutexify()
-  this._cache = opts.cache === false ? null : cache(65536, {indexedValues: true})
+  this._cache = getCache(opts)
+  this._wait = opts.wait !== false
+  this._cached = !!opts.cached
+  this._asNode = !!opts.node
 
   this.feed = feed
   this.version = this._head
@@ -94,7 +97,7 @@ Tree.prototype._put = function (head, seq, names, value, cb) {
 
 Tree.prototype.list = function (name, opts, cb) {
   if (typeof opts === 'function') return this.list(name, null, opts)
-  if (!opts) opts = {}
+  opts = this._defaultOpts(opts)
 
   var self = this
   var names = split(name)
@@ -143,7 +146,7 @@ Tree.prototype._list = function (head, seq, names, opts, cb) {
 
 Tree.prototype.get = function (name, opts, cb) {
   if (typeof opts === 'function') return this.get(name, null, opts)
-  if (!opts) opts = {}
+  opts = this._defaultOpts(opts)
 
   var names = split(name)
   var self = this
@@ -157,7 +160,7 @@ Tree.prototype.get = function (name, opts, cb) {
 
 Tree.prototype.path = function (name, opts, cb) {
   if (typeof opts === 'function') return this.path(name, null, opts)
-  if (!opts) opts = {}
+  opts = this._defaultOpts(opts)
 
   var names = split(name)
   var path = []
@@ -174,7 +177,15 @@ Tree.prototype.path = function (name, opts, cb) {
 }
 
 Tree.prototype.checkout = function (seq) {
-  return new Tree(this.feed, {checkout: seq, offset: this._offset, codec: this._codec})
+  return new Tree(this.feed, {
+    checkout: seq,
+    offset: this._offset,
+    codec: this._codec,
+    cache: this._cache || false,
+    node: this._asNode,
+    wait: this._wait,
+    cached: this._cached
+  })
 }
 
 Tree.prototype._del = function (head, seq, names, cb) {
@@ -361,7 +372,8 @@ Tree.prototype.ready = function (cb) {
 }
 
 Tree.prototype.history = function (opts) {
-  if (!opts) opts = {}
+  opts = this._defaultOpts(opts)
+
   if (this._offset) opts.start = Math.max(opts.start || 0, this._offset)
   if (this._head > -1) opts.end = this._head + 1
 
@@ -378,7 +390,7 @@ Tree.prototype.history = function (opts) {
 }
 
 Tree.prototype.diff = function (tree, opts) {
-  return diff(this, tree, opts)
+  return diff(this, tree, this._defaultOpts(opts))
 }
 
 Tree.prototype._node = function (node, version) {
@@ -522,6 +534,14 @@ Tree.prototype._inflate = function (seq, buf) {
   return index
 }
 
+Tree.prototype._defaultOpts = function (opts) {
+  if (!opts) return {wait: this._wait, cached: this._cached, node: this._asNode}
+  if (opts.wait === undefined) opts.wait = this._wait
+  if (opts.cached === undefined) opts.cached = this._cached
+  if (opts.node === undefined) opts.noce = this._asNode
+  return opts
+}
+
 function join (names) {
   return '/' + names.join('/')
 }
@@ -555,6 +575,12 @@ function Node (node, seq) {
   this.name = node.name
   this.value = node.value
   this.paths = node.paths
+}
+
+function getCache (opts) {
+  if (opts.cache === false) return null
+  if (opts.cache === true || !opts.cache) return cache(65536, {indexedValues: true})
+  return opts.cache
 }
 
 function diff (older, latest, opts) {
