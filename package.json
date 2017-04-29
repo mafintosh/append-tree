@@ -10,6 +10,7 @@
     "from2": "^2.3.0",
     "inherits": "^2.0.3",
     "mutexify": "^1.1.0",
+    "process-nextick-args": "^1.0.7",
     "protocol-buffers": "^3.2.1",
     "varint": "^5.0.0"
   },
