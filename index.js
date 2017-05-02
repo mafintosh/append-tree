@@ -425,7 +425,7 @@ Tree.prototype.diff = function (toTree, opts) {
     })
   }
 
-  function push (dir, isPut, node, result) {
+  function push (dir, isPut, node, visited, result) {
     if (isPut && !diffPuts) return
     if (!isPut && !diffDels) return
 
@@ -441,10 +441,15 @@ Tree.prototype.diff = function (toTree, opts) {
       })
     }
 
-    queue.push(nameDir)
+    if (!visited.hasOwnProperty(nameDir)) {
+      visited[nameDir] = true
+      queue.push(nameDir)
+    }
   }
 
   function visit (dir, cb) {
+    var visited = {}
+
     toTree.list(dir, {node: true}, function (err, a) {
       if (err && !err.notFound) return cb(err)
       if (!a) a = []
@@ -462,14 +467,16 @@ Tree.prototype.diff = function (toTree, opts) {
             i++
             j++
           } else if (a[i].version < b[j].version) {
-            push(dir, true, a[i++], result)
+            // console.log('pushing', a[i], b[j])
+            push(dir, true, a[i++], visited, result)
           } else {
-            push(dir, false, b[j++], result)
+            // console.log('her')
+            push(dir, false, b[j++], visited, result)
           }
         }
 
-        for (; i < a.length; i++) push(dir, true, a[i], result)
-        for (; j < b.length; j++) push(dir, false, b[j], result)
+        for (; i < a.length; i++) push(dir, true, a[i], visited, result)
+        for (; j < b.length; j++) push(dir, false, b[j], visited, result)
 
         cb(null, result)
       })
