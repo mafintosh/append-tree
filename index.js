@@ -404,6 +404,8 @@ Tree.prototype.diff = function (toTree, opts) {
   var diffPuts = opts.puts !== false
   var diffDels = opts.dels !== false
   var queue = ['/']
+  var first = true
+  var forceVisit = {}
 
   if (opts.reverse) {
     fromTree = toTree
@@ -413,7 +415,23 @@ Tree.prototype.diff = function (toTree, opts) {
   var stream = from.obj(read)
   return stream
 
+  function firstRead (size, cb) {
+    first = false
+    toTree.head(function (err, head) {
+      if (err) return cb(err)
+      if (head.value) return read(size, cb)
+
+      var parts = head.name.split('/')
+      for (var i = 0; i < parts.length; i++) {
+        forceVisit[parts.slice(0, i).join('/') || '/'] = true
+      }
+
+      read(size, cb)
+    })
+  }
+
   function read (size, cb) {
+    if (first) return firstRead(size, cb)
     if (!queue.length) return cb(null, null)
     visit(queue.shift(), function (err, result) {
       if (err) return cb(err)
@@ -430,7 +448,7 @@ Tree.prototype.diff = function (toTree, opts) {
     if (!isPut && !diffDels) return
 
     var name = node.name
-    var nameDir = '/' + split(name).slice(0, split(dir).length + 1).join('/')
+    var nameDir = parseDir(dir, node.name)
 
     if (name === nameDir) {
       result.push({
@@ -445,6 +463,10 @@ Tree.prototype.diff = function (toTree, opts) {
       visited[nameDir] = true
       queue.push(nameDir)
     }
+  }
+
+  function parseDir (dir, name) {
+    return '/' + split(name).slice(0, split(dir).length + 1).join('/')
   }
 
   function visit (dir, cb) {
@@ -464,13 +486,16 @@ Tree.prototype.diff = function (toTree, opts) {
 
         while (i < a.length && j < b.length) {
           if (a[i].version === b[j].version) {
+            var nameDir = parseDir(dir, a[i].name)
+            if (forceVisit.hasOwnProperty(nameDir) && !visited[nameDir]) {
+              visited[nameDir] = true
+              queue.push(nameDir)
+            }
             i++
             j++
           } else if (a[i].version < b[j].version) {
-            // console.log('pushing', a[i], b[j])
             push(dir, true, a[i++], visited, result)
           } else {
-            // console.log('her')
             push(dir, false, b[j++], visited, result)
           }
         }

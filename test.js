@@ -651,6 +651,55 @@ tape('diff only dels', function (t) {
   })
 })
 
+tape('last del + diff', function (t) {
+  var tr = create()
+
+  tr.put('/b', 'a')
+  tr.put('/c', 'a')
+  tr.del('/a')
+  tr.put('/foo/a', 'a')
+  tr.del('/b')
+  tr.put('/foo/b', 'a')
+  tr.del('/c')
+  tr.put('/foo/c', 'a')
+  tr.del('/foo/a')
+  tr.put('/foo/bar/a', 'a')
+  tr.del('/foo/b')
+  tr.put('/foo/bar/b', 'a')
+  tr.del('/foo/c')
+  tr.put('/foo/bar/c', 'a')
+  tr.del('/foo/bar/a')
+  tr.put('/foo/bar/baz/a', 'a')
+  tr.del('/foo/bar/b')
+  tr.put('/foo/bar/baz/b', 'a')
+  tr.del('/foo/bar/c')
+  tr.del('/foo/bar/baz/a')
+  tr.put('/foo/bar/baz/c', 'a', function () {
+    var a = tr.checkout(17)
+    var b = tr.checkout(19)
+
+    var expected = [{
+      type: 'del',
+      name: '/foo/bar/c',
+      value: new Buffer('a'),
+      version: 13
+    }, {
+      type: 'del',
+      name: '/foo/bar/baz/a',
+      value: new Buffer('a'),
+      version: 15
+    }]
+
+    a.diff(b)
+      .on('data', function (data) {
+        t.same(expected.shift(), data)
+      })
+      .on('end', function () {
+        t.end()
+      })
+  })
+})
+
 function create (opts) {
   return tree(hypercore(ram), opts)
 }
