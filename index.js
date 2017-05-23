@@ -419,7 +419,7 @@ Tree.prototype.diff = function (toTree, opts) {
     first = false
     toTree.head(function (err, head) {
       if (err) return cb(err)
-      if (head.value) return read(size, cb)
+      if (!head || head.value) return read(size, cb)
 
       var parts = head.name.split('/')
       for (var i = 0; i < parts.length; i++) {
