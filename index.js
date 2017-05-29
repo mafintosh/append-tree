@@ -205,32 +205,28 @@ Tree.prototype._del = function (head, seq, names, cb) {
     if (err) return cb(err)
 
     var cnames = c ? split(c.name) : []
+    var depth = compare(names, cnames) + 1
 
     loop(null, null, null)
 
     function loop (err, nodes, seqs) {
       if (err) return cb(err)
 
-      if (nodes) {
+      if (nodes && i <= depth) {
         var result = []
-        var skip = false
 
         for (var j = 0; j < nodes.length; j++) {
-          var cname = i - 1 < cnames.length ? cnames[i - 1] : null
-          var next = nodes[j]
-
-          if (split(next.name)[i - 1] === cname) {
-            skip = true
-            continue
+          if (split(nodes[j].name)[i - 1] !== names[i - 1]) {
+            if (nodes[j].name !== ignore) {
+              result.push(seqs[j])
+            }
           }
-
-          if (next.name !== ignore) result.push(seqs[j])
         }
 
-        if (skip && cseq > -1) {
-          result.push(cseq)
-          result.sort(sort)
+        if (i < depth) {
+          result.push(len)
         }
+
         index.push(result)
       }
 
@@ -254,8 +250,8 @@ Tree.prototype._del = function (head, seq, names, cb) {
     self._list(head, seq, names.slice(0, j), null, function (err, nodes, seqs) {
       if (err) return cb(err)
 
-      for (var i = 0; i < nodes.length; i++) {
-        if (nodes[i].name !== ignore) return cb(null, nodes[i], seqs[i])
+      for (var i = nodes.length - 1; i >= 0; i--) {
+        if (nodes[i].name !== ignore && nodes[i].value) return cb(null, nodes[i], seqs[i])
       }
 
       if (j <= 0) {
@@ -680,10 +676,6 @@ function compare (a, b) {
   var idx = 0
   while (idx < a.length && a[idx] === b[idx]) idx++
   return idx
-}
-
-function sort (a, b) {
-  return a - b
 }
 
 function Node (node, seq) {
