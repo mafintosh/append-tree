@@ -882,6 +882,44 @@ tape('@pfrazee bug delete removes too much', function (t) {
   })
 })
 
+tape('small cache', function (t) {
+  var tr = create({cacheSize: 2})
+
+  tr.get('/hello', function (err) {
+    t.ok(err, 'had error')
+    tr.put('/hello', 'world', function (err) {
+      t.error(err, 'no error')
+      tr.get('/hello', function (err, value) {
+        t.error(err, 'no error')
+        t.same(value, new Buffer('world'))
+        tr.get('/foo', function (err) {
+          t.ok(err, 'had error')
+          t.end()
+        })
+      })
+    })
+  })
+})
+
+tape('no cache', function (t) {
+  var tr = create({cache: false})
+
+  tr.get('/hello', function (err) {
+    t.ok(err, 'had error')
+    tr.put('/hello', 'world', function (err) {
+      t.error(err, 'no error')
+      tr.get('/hello', function (err, value) {
+        t.error(err, 'no error')
+        t.same(value, new Buffer('world'))
+        tr.get('/foo', function (err) {
+          t.ok(err, 'had error')
+          t.end()
+        })
+      })
+    })
+  })
+})
+
 function create (opts) {
   return tree(hypercore(ram), opts)
 }

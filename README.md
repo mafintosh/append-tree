@@ -46,8 +46,10 @@ Options include:
 
 ``` js
 {
-  valueEncoding: 'binary' | 'utf-8' | 'json' | anyAbstractEncoding,
+  valueEncoding: 'binary' | 'utf-8' | 'json' | anyAbstractEncoding
   offset: 0 // optional feed offset where the tree starts
+  cache: true // use an LRU cache on tree entries
+  cacheSize: 65536 // how many entries to use in the LRU cache
 }
 ```
 
