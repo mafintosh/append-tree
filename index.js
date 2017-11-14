@@ -687,6 +687,9 @@ function Node (node, seq) {
 
 function getCache (opts) {
   if (opts.cache === false) return null
-  if (opts.cache === true || !opts.cache) return cache(65536, {indexedValues: true})
+  if (opts.cache === true || !opts.cache) {
+    var cacheSize = opts.cacheSize || 65536
+    return cache(cacheSize, {indexedValues: true})
+  }
   return opts.cache
 }
