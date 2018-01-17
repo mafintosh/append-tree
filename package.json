@@ -5,32 +5,28 @@
   "main": "index.js",
   "dependencies": {
     "array-lru": "^1.1.1",
-    "brfs": "^1.4.3",
     "codecs": "^1.2.0",
     "from2": "^2.3.0",
     "inherits": "^2.0.3",
     "mutexify": "^1.1.0",
     "process-nextick-args": "^1.0.7",
-    "protocol-buffers": "^3.2.1",
+    "protocol-buffers-encodings": "^1.1.0",
     "varint": "^5.0.0"
   },
   "devDependencies": {
     "hypercore": "^6.11.0",
+    "protocol-buffers": "^4.0.2",
     "random-access-memory": "^2.3.0",
     "standard": "^9.0.1",
     "tape": "^4.6.3"
   },
   "scripts": {
-    "test": "standard && tape test.js"
+    "test": "standard && tape test.js",
+    "protobuf": "protocol-buffers schema.proto -o messages.js"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/mafintosh/append-tree.git"
-  },
-  "browserify": {
-    "transform": [
-      "brfs"
-    ]
   },
   "author": "Mathias Buus (@mafintosh)",
   "license": "MIT",
