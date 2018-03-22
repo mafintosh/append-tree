@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "array-lru": "^1.1.1",
+    "buffer-alloc": "^1.1.0",
     "codecs": "^1.2.0",
     "from2": "^2.3.0",
     "inherits": "^2.0.3",
@@ -14,6 +15,7 @@
     "varint": "^5.0.0"
   },
   "devDependencies": {
+    "buffer-from": "^1.0.0",
     "hypercore": "^6.11.0",
     "protocol-buffers": "^4.0.2",
     "random-access-memory": "^2.3.0",

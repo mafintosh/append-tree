@@ -7,6 +7,7 @@ var inherits = require('inherits')
 var events = require('events')
 var cache = require('array-lru')
 var nextTick = require('process-nextick-args')
+var bufferAlloc = require('buffer-alloc')
 
 module.exports = Tree
 
@@ -591,7 +592,7 @@ Tree.prototype._deflate = function (seq, index) {
   var header = 0
   if (endsWithSeq) header |= 1
 
-  var buf = new Buffer(lenIsh)
+  var buf = bufferAlloc(lenIsh)
   var offset = 0
 
   buf[offset++] = header
