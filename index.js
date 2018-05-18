@@ -129,7 +129,12 @@ Tree.prototype.list = function (name, opts, cb) {
 }
 
 Tree.prototype._list = function (head, seq, names, opts, cb) {
-  var headIndex = this._inflate(seq, head.paths)
+  var headIndex
+  try {
+    headIndex = this._inflate(seq, head.paths)
+  } catch (e) {
+    return cb(e)
+  }
   var cmp = compare(split(head.name), names)
 
   var index = cmp < headIndex.length && headIndex[cmp]
@@ -294,7 +299,12 @@ Tree.prototype._get = function (head, seq, names, record, opts, cb) {
     return cb(null, this._codec.decode(head.value))
   }
 
-  var inflated = this._inflate(seq, head.paths)
+  var inflated
+  try {
+    inflated = this._inflate(seq, head.paths)
+  } catch (e) {
+    return cb(e)
+  }
   if (cmp >= inflated.length) return cb(notFound(names))
 
   var index = inflated[cmp]
