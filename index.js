@@ -650,7 +650,7 @@ Tree.prototype._defaultOpts = function (opts) {
   if (!opts) return {wait: this._wait, cached: this._cached, node: this._asNode}
   if (opts.wait === undefined) opts.wait = this._wait
   if (opts.cached === undefined) opts.cached = this._cached
-  if (opts.node === undefined) opts.noce = this._asNode
+  if (opts.node === undefined) opts.node = this._asNode
   return opts
 }
 
