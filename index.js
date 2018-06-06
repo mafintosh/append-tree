@@ -550,7 +550,11 @@ Tree.prototype._getAndDecode = function (seq, opts, cb) {
 
   this.feed.get(seq, opts, function (err, value) {
     if (err) return cb(err)
-    var node = new Node(messages.Node.decode(value), seq)
+    try {
+      var node = new Node(messages.Node.decode(value), seq)
+    } catch (err) {
+      return cb(err)
+    }
     if (self._cache) self._cache.set(seq, node)
     cb(null, node, seq)
   })
