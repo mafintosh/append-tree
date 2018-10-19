@@ -85,7 +85,7 @@ Each data event looks like this
   type: 'put' | 'del',
   version: 42, // version of the tree at this point in time
   name: '/foo',
-  value: new Buffer('bar') // null if it is a del
+  value: Buffer.from('bar') // null if it is a del
 }
 ```
 

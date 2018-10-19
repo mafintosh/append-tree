@@ -2,6 +2,7 @@ var tape = require('tape')
 var hypercore = require('hypercore')
 var ram = require('random-access-memory')
 var tree = require('./')
+var bufferFrom = require('buffer-from')
 
 tape('basic', function (t) {
   var tr = create()
@@ -12,7 +13,7 @@ tape('basic', function (t) {
       t.error(err, 'no error')
       tr.get('/hello', function (err, value) {
         t.error(err, 'no error')
-        t.same(value, new Buffer('world'))
+        t.same(value, bufferFrom('world'))
         tr.get('/foo', function (err) {
           t.ok(err, 'had error')
           t.end()
@@ -51,11 +52,11 @@ tape('put twice', function (t) {
     tr.put('/world', 'hello', function () {
       tr.get('/hello', function (err, value) {
         t.error(err, 'no error')
-        t.same(value, new Buffer('world'))
+        t.same(value, bufferFrom('world'))
       })
       tr.get('/world', function (err, value) {
         t.error(err, 'no error')
-        t.same(value, new Buffer('hello'))
+        t.same(value, bufferFrom('hello'))
       })
     })
   })
@@ -70,11 +71,11 @@ tape('put twice same folder', function (t) {
     tr.put('/hello/world', 'hello', function () {
       tr.get('/hello', function (err, value) {
         t.error(err, 'no error')
-        t.same(value, new Buffer('world'))
+        t.same(value, bufferFrom('world'))
       })
       tr.get('/hello/world', function (err, value) {
         t.error(err, 'no error')
-        t.same(value, new Buffer('hello'))
+        t.same(value, bufferFrom('hello'))
       })
       tr.list('/', function (err, list) {
         t.error(err, 'no error')
@@ -98,12 +99,12 @@ tape('put twice same folder diff root', function (t) {
       tr.put('/hello/world', 'hello', function () {
         tr.get('/hello', function (err, value) {
           t.error(err, 'no error')
-          t.same(value, new Buffer('world'))
+          t.same(value, bufferFrom('world'))
         })
 
         tr.get('/hello/world', function (err, value) {
           t.error(err, 'no error')
-          t.same(value, new Buffer('hello'))
+          t.same(value, bufferFrom('hello'))
         })
 
         tr.list('/', function (err, list) {
@@ -130,15 +131,15 @@ tape('put three times', function (t) {
       tr.put('/hello/world', 'hi', function () {
         tr.get('/hello', function (err, value) {
           t.error(err, 'no error')
-          t.same(value, new Buffer('world'))
+          t.same(value, bufferFrom('world'))
         })
         tr.get('/world', function (err, value) {
           t.error(err, 'no error')
-          t.same(value, new Buffer('hello'))
+          t.same(value, bufferFrom('hello'))
         })
         tr.get('/hello/world', function (err, value) {
           t.error(err, 'no error')
-          t.same(value, new Buffer('hi'))
+          t.same(value, bufferFrom('hi'))
         })
       })
     })
@@ -156,19 +157,19 @@ tape('put four times', function (t) {
         tr.put('/world/hello', 'hi', function () {
           tr.get('/hello', function (err, value) {
             t.error(err, 'no error')
-            t.same(value, new Buffer('world'))
+            t.same(value, bufferFrom('world'))
           })
           tr.get('/world', function (err, value) {
             t.error(err, 'no error')
-            t.same(value, new Buffer('hello'))
+            t.same(value, bufferFrom('hello'))
           })
           tr.get('/hello/world', function (err, value) {
             t.error(err, 'no error')
-            t.same(value, new Buffer('hi'))
+            t.same(value, bufferFrom('hi'))
           })
           tr.get('/world/hello', function (err, value) {
             t.error(err, 'no error')
-            t.same(value, new Buffer('hi'))
+            t.same(value, bufferFrom('hi'))
           })
           tr.list('/', function (err, list) {
             t.error(err, 'no error')
@@ -282,11 +283,11 @@ tape('many puts and delete', function (t) {
         })
         tr.get('/hello', function (err, val) {
           t.error(err, 'no error')
-          t.same(val, new Buffer('world'))
+          t.same(val, bufferFrom('world'))
         })
         tr.get('/world/foo', function (err, val) {
           t.error(err, 'no error')
-          t.same(val, new Buffer('bar'))
+          t.same(val, bufferFrom('bar'))
         })
         tr.list('/world', function (err, list) {
           t.error(err, 'no error')
@@ -309,15 +310,15 @@ tape('many puts and delete 2', function (t) {
   tr.del('/a/b/c/d/f', function () {
     tr.get('/a', function (err, val) {
       t.error(err, 'no error')
-      t.same(val, new Buffer('1'))
+      t.same(val, bufferFrom('1'))
     })
     tr.get('/a/a', function (err, val) {
       t.error(err, 'no error')
-      t.same(val, new Buffer('2'))
+      t.same(val, bufferFrom('2'))
     })
     tr.get('/a/b/c/d/e', function (err, val) {
       t.error(err, 'no error')
-      t.same(val, new Buffer('0'))
+      t.same(val, bufferFrom('0'))
     })
     tr.get('/a/b/c/d/f', function (err) {
       t.ok(err, 'had error')
@@ -337,15 +338,15 @@ tape('many puts and delete 2 (opposite)', function (t) {
   tr.del('/a/b/c/d/e', function () {
     tr.get('/a', function (err, val) {
       t.error(err, 'no error')
-      t.same(val, new Buffer('1'))
+      t.same(val, bufferFrom('1'))
     })
     tr.get('/a/a', function (err, val) {
       t.error(err, 'no error')
-      t.same(val, new Buffer('2'))
+      t.same(val, bufferFrom('2'))
     })
     tr.get('/a/b/c/d/f', function (err, val) {
       t.error(err, 'no error')
-      t.same(val, new Buffer('3'))
+      t.same(val, bufferFrom('3'))
     })
     tr.get('/a/b/c/d/e', function (err) {
       t.ok(err, 'had error')
@@ -391,7 +392,7 @@ tape('checkout', function (t) {
 
     old2.get('/bar', function (err, val) {
       t.error(err, 'no error')
-      t.same(val, new Buffer('baz'))
+      t.same(val, bufferFrom('baz'))
     })
   })
 })
@@ -407,12 +408,12 @@ tape('history stream', function (t) {
       type: 'put',
       version: 0,
       name: '/',
-      value: new Buffer('foo')
+      value: bufferFrom('foo')
     }, {
       type: 'put',
       version: 1,
       name: '/foo',
-      value: new Buffer('bar')
+      value: bufferFrom('bar')
     }, {
       type: 'del',
       version: 2,
@@ -422,7 +423,7 @@ tape('history stream', function (t) {
       type: 'put',
       version: 3,
       name: '/bar',
-      value: new Buffer('baz')
+      value: bufferFrom('baz')
     }]
 
     tr.history()
@@ -451,7 +452,7 @@ tape('cached', function (t) {
       })
       tr.get('/bar', {cached: true}, function (err, val) {
         t.error(err, 'no error')
-        t.same(val, new Buffer('baz'))
+        t.same(val, bufferFrom('baz'))
       })
       tr.get('/foo', {cached: true}, function (err) {
         t.ok(err, 'had error')
@@ -474,12 +475,12 @@ tape('default options', function (t) {
         type: 'put',
         name: '/foo',
         version: 1,
-        value: new Buffer('bar')
+        value: bufferFrom('bar')
       }, {
         type: 'put',
         name: '/bar',
         version: 2,
-        value: new Buffer('baz')
+        value: bufferFrom('baz')
       }])
     })
     tr.get('/bar', function (err, val) {
@@ -488,12 +489,12 @@ tape('default options', function (t) {
         type: 'put',
         name: '/bar',
         version: 2,
-        value: new Buffer('baz')
+        value: bufferFrom('baz')
       })
     })
     tr.get('/bar', {node: false}, function (err, val) {
       t.error(err, 'no error')
-      t.same(val, new Buffer('baz'))
+      t.same(val, bufferFrom('baz'))
     })
   })
 })
@@ -504,7 +505,7 @@ tape('diff', function (t) {
   tr.put('/foo', 'bar')
   tr.put('/bar', 'baz', function () {
     var stream = tr.checkout(0).diff(tr)
-    var expected = [{type: 'put', name: '/bar', value: new Buffer('baz'), version: 1}]
+    var expected = [{type: 'put', name: '/bar', value: bufferFrom('baz'), version: 1}]
 
     stream.on('data', function (data) {
       t.same(data, expected.shift())
@@ -525,12 +526,12 @@ tape('diff empty', function (t) {
     var expected = [{
       type: 'put',
       name: '/foo',
-      value: new Buffer('bar'),
+      value: bufferFrom('bar'),
       version: 0
     }, {
       type: 'put',
       name: '/bar',
-      value: new Buffer('baz'),
+      value: bufferFrom('baz'),
       version: 1
     }]
 
@@ -571,12 +572,12 @@ tape('diff with dels', function (t) {
     var expected = [{
       type: 'del',
       name: '/foo',
-      value: new Buffer('bar'),
+      value: bufferFrom('bar'),
       version: 0
     }, {
       type: 'put',
       name: '/bar',
-      value: new Buffer('foo'),
+      value: bufferFrom('foo'),
       version: 1
     }]
 
@@ -601,17 +602,17 @@ tape('diff with overwrites', function (t) {
     var expected = [{
       type: 'del',
       name: '/foo',
-      value: new Buffer('bar'),
+      value: bufferFrom('bar'),
       version: 0
     }, {
       type: 'put',
       name: '/bar',
-      value: new Buffer('foo'),
+      value: bufferFrom('foo'),
       version: 1
     }, {
       type: 'put',
       name: '/foo',
-      value: new Buffer('baz'),
+      value: bufferFrom('baz'),
       version: 2
     }]
 
@@ -636,7 +637,7 @@ tape('diff only dels', function (t) {
     var expected = [{
       type: 'del',
       name: '/foo',
-      value: new Buffer('bar'),
+      value: bufferFrom('bar'),
       version: 0
     }]
 
@@ -681,12 +682,12 @@ tape('last del + diff', function (t) {
     var expected = [{
       type: 'del',
       name: '/foo/bar/c',
-      value: new Buffer('a'),
+      value: bufferFrom('a'),
       version: 13
     }, {
       type: 'del',
       name: '/foo/bar/baz/a',
-      value: new Buffer('a'),
+      value: bufferFrom('a'),
       version: 15
     }]
 
@@ -891,7 +892,7 @@ tape('small cache', function (t) {
       t.error(err, 'no error')
       tr.get('/hello', function (err, value) {
         t.error(err, 'no error')
-        t.same(value, new Buffer('world'))
+        t.same(value, bufferFrom('world'))
         tr.get('/foo', function (err) {
           t.ok(err, 'had error')
           t.end()
@@ -910,7 +911,7 @@ tape('no cache', function (t) {
       t.error(err, 'no error')
       tr.get('/hello', function (err, value) {
         t.error(err, 'no error')
-        t.same(value, new Buffer('world'))
+        t.same(value, bufferFrom('world'))
         tr.get('/foo', function (err) {
           t.ok(err, 'had error')
           t.end()
